@@ -176,7 +176,7 @@ class Depozit():
         
         base.commit()
         return 0
-
+ 
         
         
         
