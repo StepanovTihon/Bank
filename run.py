@@ -68,33 +68,24 @@ class Category():
         cursor.execute('INSERT INTO Category( currency, interest, periodicity, name)  VALUES("{0}", {1}, {2} , "{3}");'.format(self.currency, self.interest,self.periodicity,self.name))
         base.commit()
 
-    def Delite(self):
+    def Delete(self):
         print("Удаление вида вклада")
         print("Название вклада:")
-        self.name=input()
-        print("Валюта:")
-        self.currency=input()
-        print("Количество процентов годовых")
-        self.interest=input()
+        cursor.execute('SELECT * FROM Category ;')
+        tmp=cursor.fetchall()
+        for i in range(len(tmp)):
+            for j in range(len(tmp[0])):
+                print(tmp[i][j], end =" ")
+            print("")
+        name=input()
         try:
-            self.interest=int(self.interest)
-        except:
-            print("Ошибка")
-            return 0
-        print("Переодичность выплат:")
-        self.periodicity=input()
-        try:
-            self.periodicity=int(self.periodicity)
+            name=int(name)
         except:
             print("Ошибка")
             return 0
         
-        cursor.execute('DELETE FROM Category WHERE currency="{0}" AND interest={1} AND periodicity={2} AND name="{3}";'.format(self.currency, self.interest,self.periodicity,self.name))
-        if(str(cursor.fetchall())=="()"):
-            print("Ошибка")
-            return 0
+        cursor.execute('DELETE FROM Category WHERE id_category={0};'.format(name))
         
-        cursor.execute('DELETE FROM Category WHERE currency="{0}" AND interest={1} AND periodicity={2} AND name="{3}";'.format(self.currency, self.interest,self.periodicity,self.name))
         
         base.commit()
         return 1
@@ -184,13 +175,13 @@ class Depozit():
 
 c=Client()
 cat=Category()
-c.Add()
-c.Login()
-cat.Creat()
-cat.Delite()
-dep=Depozit(c.id)
-dep.Creatе('2010-11-13')
-dep.Replenish()
+#c.Add()
+#c.Login()
+#cat.Creat()
+cat.Delete()
+#dep=Depozit(c.id)
+#dep.Creatе('2010-11-13')
+#dep.Replenish()
 
 
 #cursor = base.cursor()
