@@ -1,9 +1,8 @@
-import pymysql
+import pymysql , threading, time
+
 
 base = pymysql.connect("192.168.32.10","tihon","123","Bank" )
- 
 cursor = base.cursor()
-
 
 class Client():
     def __init__(self):
@@ -33,10 +32,12 @@ class Client():
         #print(cursor.fetchall())
         if(len(tmp)==0 ):
             print("ОШИБКА")
+            return 0
         else:
             cursor.execute('SELECT user_id FROM Clients WHERE login="{0}" AND pasword="{1}" LIMIT 1'.format(self.login,self.password))
             self.id=cursor.fetchall()
-            print(str(tmp[0][0])+"  " + str(self.id[0][0]))
+            print(str(tmp[0][0]),end=" ")
+        return 1
 
 class Category():
     def __init__(self):
@@ -118,12 +119,10 @@ class Depozit():
         
         cursor.execute('SELECT id_category FROM Category WHERE name = "{0}"'.format(name))
         tmp=cursor.fetchall()
-        print(tmp)
         if(str(tmp)=="()"):
             print("Ошибка")
             return 0
             
-        print('INSERT INTO Deposits( user_id, type_depozit_id, sum, date_payment)  VALUES({0}, {1}, {2} , "{3}");'.format(self.id_user, tmp[0][0],int(self.sum),date))
         cursor.execute('INSERT INTO Deposits( user_id, type_depozit_id, summ, date_payment)  VALUES({0}, {1}, {2} , "{3}");'.format(int(self.id_user[0][0]), tmp[0][0],int(self.sum),date))
         base.commit()
         return 1
@@ -153,7 +152,7 @@ class Depozit():
                 break
         print("Вы хотите пополнить или уменьшить счёт?(+|-)")
         plus=input()
-        if(plus!="+" or plus!="-"):
+        if(not(plus=="+" or plus=="-")):
             print("Ошибка")
             return 0
         if(tmp2==""):
@@ -163,6 +162,8 @@ class Depozit():
                 cursor.execute('UPDATE Deposits SET summ={0} WHERE user_id={1} AND id_deposits={2};'.format((sum+tmp[tmp2][5]),int(self.id_user[0][0]),name))
             else:
                 cursor.execute('UPDATE Deposits SET summ={0} WHERE user_id={1} AND id_deposits={2};'.format((tmp[tmp2][5]-sum),int(self.id_user[0][0]),name))
+                if((tmp[tmp2][5]-sum)<=0):
+                    cursor.execute('DELETE FROM Deposits WHERE user_id={0} AND id_deposits={1};'.format(int(self.id_user[0][0]),name))
         
         
         base.commit()
@@ -170,23 +171,108 @@ class Depozit():
  
         
         
+def Date():
+    global data_time
+    while True: 
         
-        
+        time.sleep(0.5)
+        cursor.execute('Select * FROM Data;')
+        tmp_data=cursor.fetchall()
+        cursor.execute('UPDATE Data SET dats = dats + INTERVAL 1 DAY;')
 
+        cursor.execute('Select dats FROM Data;')
+        data_time=cursor.fetchall()
+        base.commit()
+        cursor.execute('SELECT Deposits.id_deposits, Category.name, Category.currency,Category.interest,Category.periodicity,Deposits.summ,Deposits.date_payment FROM Category INNER JOIN Deposits ON Category.id_category = Deposits.type_depozit_id;')
+
+        users=cursor.fetchall()
+        for i in range(len(users)):
+            cursor.execute("SELECT DATEDIFF('{1}','{0}')".format(str(users[i][6]),str(data_time[0][0]),users[i][5]));    
+            #print(cursor.fetchall()[0][0]==users[i][4])
+            if(cursor.fetchall()[0][0]==users[i][4]):
+                cursor.execute('UPDATE Deposits SET  summ={0} , date_payment="{1}" WHERE id_deposits = {2};'.format((users[i][5]+(users[i][5]/100 * users[i][3])),data_time[0][0],users[i][0]))
+        base.commit()
+
+            
+            
+
+
+
+
+
+data_time=""     
+timer=threading.Thread(target=Date)
+timer.start()
 c=Client()
 cat=Category()
+
 #c.Add()
 #c.Login()
 #cat.Creat()
-cat.Delete()
+#cat.Delete()
 #dep=Depozit(c.id)
 #dep.Creatе('2010-11-13')
 #dep.Replenish()
+print("Добро пожаловать в ТиБанк!")
+
+while True:
+    print("Выберете действие из меню:")
+    print("1.Вход в ползователя")
+    print("2.Создание нового пользователя")
+    print("3.Создать Новый вид депозита")
+    print("4.Удалить вид депозита")
+    print("5.Просмотр вех пользователей")
+    print("6.Просмотр вех видов депозитов")
+    print("7.Выход из ТиБанка")
+    vub=input()
+    if(vub=="1"):
+        if(c.Login()):
+            while True:
+                dep=Depozit(c.id)
+                print("добро пожаловать в меню пользователя!")
+                print("Выберете действие из меню:")
+                print("1.Создать депозит")
+                print("2.Пополнить депозит")
+                print("3.Просмотр всех депозитов")
+                print("4.Выход")
+                vub2=input()
+                if(vub2=="1"):
+                    dep.Creatе(data_time)
+                if(vub2=="2"):
+                    dep.Replenish()
+                if(vub2=="3"):
+                    cursor.execute('SELECT Deposits.id_deposits, Category.name, Category.currency,Category.interest,Category.periodicity,Deposits.summ,Deposits.date_payment FROM Category INNER JOIN Deposits ON Category.id_category = Deposits.type_depozit_id WHERE Deposits.user_id={0};'.format(c.id[0][0]))
+                    tmp=cursor.fetchall()
+                    for i in range(len(tmp)):
+                        for j in range(len(tmp[0])):
+                            print(tmp[i][j], end =" ")
+                        print("")
+                    
+                if(vub2=="4"):
+                    break
+    if(vub=="2"):
+        c.Add()
+    if(vub=="3"):
+        cat.Creat()
+    if(vub=="4"):
+        cat.Delete()
+    if(vub=="5"):
+        cursor.execute("SELECT * FROM Clients")
+        tmp=cursor.fetchall()
+        for i in range(len(tmp)):
+            for j in range(len(tmp[0])):
+                print(tmp[i][j], end =" ")
+            print("")
+    if(vub=="6"):
+        cursor.execute("SELECT * FROM Category")
+        tmp=cursor.fetchall()
+        for i in range(len(tmp)):
+            for j in range(len(tmp[0])):
+                print(tmp[i][j], end =" ")
+            print("")
+
+    if(vub=="7"):
+        break
 
 
-#cursor = base.cursor()
-#cursor.execute("SELECT ip,NAME FROM hosts")-+
-#cursor.execute("UPDATE hosts SET ONLINE = '{0}' WHERE ip='{1}';".format(ONLINE_or_OFFLINE(status), i))
-#cursor.execute("INSERT INTO ping(ip, polling_date, polling_time, status) VALUES ('{0}', '{1}', '{2}', '{3}')".format(i, now.strftime("%d-%m-%Y"), now.strftime("%H:%M"), ONLINE_or_OFFLINE(status)))
-#base.commit()
-#base.close()
+
